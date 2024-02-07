@@ -17,11 +17,11 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-        preCommands: |
-          wrangler kv:namespace create KV_HATEB_BSKY || true
-          export KV_HATEB_BSKY_ID=$(wrangler kv:namespace list | jq -r '.[] | select(.title | endswith("KV_HATEB_BSKY")) | .id')
-          echo "[env.production]" >> wrangler.toml
-          echo "kv_namespaces = [{binding=\"KV\", id=\"${KV_HATEB_BSKY_ID}\"}]" >> wrangler.toml
-        environment: production
-      env:
-        CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          preCommands: |
+            wrangler kv:namespace create KV_HATEB_BSKY || true
+            export KV_HATEB_BSKY_ID=$(wrangler kv:namespace list | jq -r '.[] | select(.title | endswith("KV_HATEB_BSKY")) | .id')
+            echo "[env.production]" >> wrangler.toml
+            echo "kv_namespaces = [{binding=\"KV\", id=\"${KV_HATEB_BSKY_ID}\"}]" >> wrangler.toml
+          environment: production
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

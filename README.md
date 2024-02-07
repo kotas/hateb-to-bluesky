@@ -10,6 +10,8 @@
 
 前提: Cloudflare と GitHub のアカウントが必要です。
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/kotas/hateb-to-bluesky)
+
 1. 上の [Deploy with Workers] ボタンを押します。
 
 2. Cloudflare のページに移動するので、GitHub での認証やアカウント設定を進めて GitHub Actions でデプロイします。
