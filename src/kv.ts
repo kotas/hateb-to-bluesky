@@ -1,28 +1,33 @@
 const PREFIX = 'entry:';
 
-export async function isPostedEntryId(kv: KVNamespace, entryId: string): Promise<boolean> {
-  return await kv.get(PREFIX + entryId) === 't';
-}
+export class EntryKV {
+  constructor(private kv: KVNamespace) {}
 
-export async function putPostedEntryId(kv: KVNamespace, entryId: string): Promise<void> {
-  await kv.put(PREFIX + entryId, 't');
-}
+  async isPostedEntryId(entryId: string): Promise<boolean> {
+    return await this.kv.get(PREFIX + entryId) === 't';
+  }
 
-export async function flushOldEntryIds(kv: KVNamespace, currentEntryIds: string[]): Promise<void> {
-  const keepingKeySet = new Set(currentEntryIds.map(id => PREFIX + id));
+  async putPostedEntryId(entryId: string): Promise<void> {
+    await this.kv.put(PREFIX + entryId, 't');
+  }
 
-  let cursor: string | undefined;
-  while (true) {
-    const listed = await kv.list({ prefix: PREFIX, cursor });
-    for (const key of listed.keys) {
-      if (!keepingKeySet.has(key.name)) {
-        await kv.delete(key.name);
+  async flushOldEntryIds(currentEntryIds: string[]): Promise<void> {
+    const keepingKeySet = new Set(currentEntryIds.map(id => PREFIX + id));
+
+    let cursor: string | undefined;
+    while (true) {
+      const listed = await this.kv.list({ prefix: PREFIX, cursor });
+      await Promise.all(
+        listed.keys
+          .filter(key => !keepingKeySet.has(key.name))
+          .map(key => this.kv.delete(key.name))
+      );
+
+      if (listed.list_complete) {
+        break;
+      } else {
+        cursor = listed.cursor;
       }
-    }
-    if (listed.list_complete) {
-      break;
-    } else {
-      cursor = listed.cursor;
     }
   }
 }

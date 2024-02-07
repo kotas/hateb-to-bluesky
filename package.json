@@ -10,11 +10,18 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240129.0",
+    "@types/he": "^1.2.3",
     "typescript": "^5.0.4",
     "wrangler": "^3.0.0"
   },
   "dependencies": {
     "@atproto/api": "^0.9.6",
-    "@extractus/feed-extractor": "^7.0.9"
+    "@extractus/feed-extractor": "^7.0.9",
+    "@jsquash/jpeg": "^1.4.0",
+    "@jsquash/png": "^3.0.0",
+    "@jsquash/resize": "^1.1.1",
+    "@jsquash/webp": "^1.4.0",
+    "file-type": "^19.0.0",
+    "unfurl.js": "^6.3.2"
   }
 }
