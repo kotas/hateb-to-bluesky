@@ -6,8 +6,9 @@
  */
 
 import { extract, FeedEntry } from '@extractus/feed-extractor';
-import { buildBlueskyAgent, postTextToBluesky } from './bluesky';
-import { isPostedEntryId, putPostedEntryId, flushOldEntryIds } from './kv';
+import { BlueskyCard, BlueskyClient } from './bluesky';
+import { EntryKV } from './kv';
+import { extractOgSummaryFromUrl } from './og';
 import { version } from '../package.json';
 
 export interface Env {
@@ -16,6 +17,7 @@ export interface Env {
   BLUESKY_IDENTIFIER: string;
   BLUESKY_PASSWORD: string;
   TEXT_TEMPLATE: string;
+  ENABLE_OG?: 'true' | 'false';
 }
 
 export default {
@@ -24,10 +26,10 @@ export default {
     if (request.method === 'GET' && url.pathname === '/') {
       try {
         const banner = getBanner(env);
-        // ログインできる事を確認する
-        await buildBlueskyAgent(env.BLUESKY_IDENTIFIER, env.BLUESKY_PASSWORD);
+        BlueskyClient.ensureLogin(env.BLUESKY_IDENTIFIER, env.BLUESKY_PASSWORD);
         return new Response(banner, { status: 200 });
       } catch (e) {
+        console.error(e);
         return new Response(String(e), { status: 500 });
       }
     } else {
@@ -45,6 +47,9 @@ function getBanner(env: Env): string {
   if (!env.HATENA_ID || !env.BLUESKY_IDENTIFIER || !env.BLUESKY_PASSWORD || !env.TEXT_TEMPLATE) {
     throw new Error('Environment variables are not configured!');
   }
+  if (!env.KV) {
+    throw new Error('KV binding is not set!');
+  }
 
   return `hateb-to-bluesky v${version}
 Hateb:   https://b.hatena.ne.jp/${env.HATENA_ID}
@@ -53,6 +58,8 @@ Bluesky: https://bsky.app/profile/${env.BLUESKY_IDENTIFIER}
 }
 
 async function runHatebToBluesky(env: Env) {
+  const kv = new EntryKV(env.KV);
+
   // はてブのフィード取得
   const hatebFeedUrl = `https://b.hatena.ne.jp/${env.HATENA_ID}/bookmark.rss`;
   const hatebFeed = await extract(hatebFeedUrl);
@@ -69,7 +76,7 @@ async function runHatebToBluesky(env: Env) {
 
   // まだ Bluesky に投稿されていない ID のエントリを抜き出す
   const postingEntries = (await Promise.all(
-    entries.map(async (et) => await isPostedEntryId(env.KV, et.id) ? null : et)
+    entries.map(async (et) => await kv.isPostedEntryId(et.id) ? null : et)
   )).filter((et: FeedEntry | null): et is FeedEntry => et !== null);
 
   if (postingEntries.length === entries.length) {
@@ -78,31 +85,58 @@ async function runHatebToBluesky(env: Env) {
 
     for (const entry of postingEntries) {
       // すべて投稿済み扱いとしてマークする
-      await putPostedEntryId(env.KV, entry.id);
+      await kv.putPostedEntryId(entry.id);
     }
   } else if (postingEntries.length > 0) {
     // 投稿対象が存在するので Bluesky にそれぞれ投稿
     console.info(`Posting ${postingEntries.length} bookmark entries to Bluesky...\n`);
     console.info('-------');
 
-    const agent = await buildBlueskyAgent(env.BLUESKY_IDENTIFIER, env.BLUESKY_PASSWORD);
+    const client = new BlueskyClient(env.BLUESKY_IDENTIFIER, env.BLUESKY_PASSWORD);
+    await client.login();
+
     for (const entry of postingEntries) {
-      const text = renderText(env.TEXT_TEMPLATE, entry);
-      console.info(text);
+      // 投稿内容をテンプレートから作成
+      const body = renderText(env.TEXT_TEMPLATE, entry);
+      console.info(body);
+
+      // OG カードが有効になっている場合は OG 情報取得
+      let card: BlueskyCard | undefined;
+      if (env.ENABLE_OG === 'true' && entry.link) {
+        const ogSummary = await extractOgSummaryFromUrl(entry.link);
+        if (ogSummary) {
+          card = {
+            link: entry.link,
+            title: ogSummary.title,
+            description: ogSummary.description,
+          };
+
+          if (ogSummary.image) {
+            // OG 画像がある場合は Bluesky にアップロードして添付
+            card.image = await client.uploadImage(ogSummary.image);
+          }
+        }
+      }
+
+      // Bluesky に投稿
+      await client.post({ body, card });
+
+      // 投稿済みとしてマーク
+      await kv.putPostedEntryId(entry.id);
+
       console.info('-------');
-      await postTextToBluesky(agent, text);
-      await putPostedEntryId(env.KV, entry.id);
     }
 
     console.info(`\nAll posted successfully!`);
   } else {
+    // 新しい投稿対象がなかった
     console.info(`No new bookmark entries found.`);
   }
 
   // 古いキーを KV から削除する
   console.info(`Flushing old entry IDs from KV...`);
   const currentEntryIds = entries.map(e => e.id);
-  await flushOldEntryIds(env.KV, currentEntryIds);
+  await kv.flushOldEntryIds(currentEntryIds);
 }
 
 function renderText(template: string, entry: FeedEntry): string {

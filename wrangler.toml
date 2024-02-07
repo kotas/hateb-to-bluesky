@@ -1,6 +1,7 @@
 name = "hateb-to-bluesky"
 main = "src/index.ts"
 compatibility_date = "2024-01-29"
+node_compat = true
 
 # 環境変数
 [env.production.vars]
@@ -10,6 +11,9 @@ compatibility_date = "2024-01-29"
 #  %link% - 元記事の URL
 #  %description% - はてなブックマークのコメント
 TEXT_TEMPLATE = "%title%\n%link%\n\n%description%"
+
+# ページの OpenGraph 情報をカードとして自動的に添付するかどうか
+ENABLE_OG = "true"
 
 # Cron トリガー設定
 # Docs: https://developers.cloudflare.com/workers/platform/triggers/cron-triggers/
