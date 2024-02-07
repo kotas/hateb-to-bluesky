@@ -1,9 +1,0 @@
-name = "hateb-to-bluesky"
-main = "src/index.ts"
-compatibility_date = "2024-01-29"
-
-# Cron Triggers
-# Docs: https://developers.cloudflare.com/workers/platform/triggers/cron-triggers/
-# Configuration: https://developers.cloudflare.com/workers/wrangler/configuration/#triggers
-[triggers]
-crons = ["* * * * *"] # * * * * * = run every minute

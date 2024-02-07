@@ -1,50 +1,114 @@
 /**
- * Welcome to Cloudflare Workers!
+ * Hateb to Bluesky
  *
- * This is a template for a Scheduled Worker: a Worker that can run on a
- * configurable interval:
- * https://developers.cloudflare.com/workers/platform/triggers/cron-triggers/
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
+ * @copyright (c) 2024 Kota SAITO <kotas.nico@gmail.com>
+ * @license MIT
  */
 
+import { extract, FeedEntry } from '@extractus/feed-extractor';
+import { buildBlueskyAgent, postTextToBluesky } from './bluesky';
+import { isPostedEntryId, putPostedEntryId, flushOldEntryIds } from './kv';
+import { version } from '../package.json';
+
 export interface Env {
-	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	// MY_KV_NAMESPACE: KVNamespace;
-	//
-	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-	// MY_DURABLE_OBJECT: DurableObjectNamespace;
-	//
-	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-	// MY_BUCKET: R2Bucket;
-	//
-	// Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
-	// MY_SERVICE: Fetcher;
-	//
-	// Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
-	// MY_QUEUE: Queue;
-	//
-	// Example binding to a D1 Database. Learn more at https://developers.cloudflare.com/workers/platform/bindings/#d1-database-bindings
-	// DB: D1Database
+  KV: KVNamespace;
+  HATENA_ID: string;
+  BLUESKY_IDENTIFIER: string;
+  BLUESKY_PASSWORD: string;
+  TEXT_TEMPLATE: string;
 }
 
 export default {
-	// The scheduled handler is invoked at the interval set in our wrangler.toml's
-	// [[triggers]] configuration.
-	async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-		// A Cron Trigger can make requests to other endpoints on the Internet,
-		// publish to a Queue, query a D1 Database, and much more.
-		//
-		// We'll keep it simple and make an API call to a Cloudflare API:
-		let resp = await fetch('https://api.cloudflare.com/client/v4/ips');
-		let wasSuccessful = resp.ok ? 'success' : 'fail';
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    try {
+      return new Response(getBanner(env), { status: 200 });
+    } catch (e) {
+      return new Response(String(e), { status: 500 });
+    }
+  },
 
-		// You could store this result in KV, write to a D1 Database, or publish to a Queue.
-		// In this template, we'll just log the result:
-		console.log(`trigger fired at ${event.cron}: ${wasSuccessful}`);
-	},
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    try {
+      console.log(getBanner(env));
+      await runHatebToBluesky(env);
+    } catch (e) {
+      console.error(String(e));
+    }
+  },
 };
+
+function getBanner(env: Env): string {
+  if (!env.HATENA_ID || !env.BLUESKY_IDENTIFIER || !env.BLUESKY_PASSWORD || !env.TEXT_TEMPLATE) {
+    throw new Error('Environment variables are not configured!');
+  }
+
+  return `hateb-to-bluesky v${version}
+Hateb:   https://b.hatena.ne.jp/${env.HATENA_ID}
+Bluesky: https://bsky.app/profile/${env.BLUESKY_IDENTIFIER}
+`;
+}
+
+async function runHatebToBluesky(env: Env) {
+  // はてブのフィード取得
+  const hatebFeedUrl = `https://b.hatena.ne.jp/${env.HATENA_ID}/bookmark.rss`;
+  const hatebFeed = await extract(hatebFeedUrl);
+  if (!hatebFeed || !hatebFeed.entries) {
+    throw new Error(`Failed to fetch Hateb feed: ${hatebFeedUrl}`);
+  }
+  if (hatebFeed.entries.length === 0) {
+    throw new Error(`No bookmark entries in Hateb feed: ${hatebFeedUrl}`);
+  }
+
+  // published 昇順でソート
+  const entries = [...hatebFeed.entries]
+    .sort((a, b) => (a.published?.getTime?.() ?? 0) - (b.published?.getTime?.() ?? 0));
+
+  // まだ Bluesky に投稿されていない ID のエントリを抜き出す
+  const postingEntries = (await Promise.all(
+    entries.map(async (et) => await isPostedEntryId(env.KV, et.id) ? null : et)
+  )).filter((et: FeedEntry | null): et is FeedEntry => et !== null);
+
+  if (postingEntries.length === entries.length) {
+    // フィード内の全エントリが投稿対象の場合は初回実行なのでスキップする
+    console.info(`Skipped posting ${postingEntries.length} entries, since it seems the first run.`);
+
+    for (const entry of postingEntries) {
+      // すべて投稿済み扱いとしてマークする
+      await putPostedEntryId(env.KV, entry.id);
+    }
+  } else if (postingEntries.length > 0) {
+    // 投稿対象が存在するので Bluesky にそれぞれ投稿
+    console.info(`Posting ${postingEntries.length} bookmark entries to Bluesky...\n`);
+    console.info('-------');
+
+    const agent = await buildBlueskyAgent(env.BLUESKY_IDENTIFIER, env.BLUESKY_PASSWORD);
+    for (const entry of postingEntries) {
+      const text = renderText(env.TEXT_TEMPLATE, entry);
+      console.info(text);
+      console.info('-------');
+      await postTextToBluesky(agent, text);
+      await putPostedEntryId(env.KV, entry.id);
+    }
+
+    console.info(`\nAll posted successfully!`);
+  } else {
+    console.info(`No new bookmark entries found.`);
+  }
+
+  // 古いキーを KV から削除する
+  console.info(`Flushing old entry IDs from KV...`);
+  const currentEntryIds = entries.map(e => e.id);
+  await flushOldEntryIds(env.KV, currentEntryIds);
+}
+
+function renderText(template: string, entry: FeedEntry): string {
+  const dict: Record<string, string> = {
+    title: entry.title ?? '',
+    link: entry.link ?? '',
+    description: entry.description ?? '',
+  };
+
+  return template
+    .replaceAll(/(%%)|%(\w+)%/g, (_, escaped, varName) => escaped ? '%' : dict[varName] ?? '')
+    .trim();
+}
