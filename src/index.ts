@@ -20,10 +20,18 @@ export interface Env {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    try {
-      return new Response(getBanner(env), { status: 200 });
-    } catch (e) {
-      return new Response(String(e), { status: 500 });
+    const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname === '/') {
+      try {
+        const banner = getBanner(env);
+        // ログインできる事を確認する
+        await buildBlueskyAgent(env.BLUESKY_IDENTIFIER, env.BLUESKY_PASSWORD);
+        return new Response(banner, { status: 200 });
+      } catch (e) {
+        return new Response(String(e), { status: 500 });
+      }
+    } else {
+      return new Response('Not found', { status: 404 });
     }
   },
 
