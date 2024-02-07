@@ -36,3 +36,9 @@
     ```
     $ npx wrangler deploy
     ```
+5. デプロイ後に表示される URL (`https://*.workers.dev`) にアクセスすると、正しくデプロイできていれば下記のような情報が表示されます。
+    ```
+    hateb-to-bluesky v1.0.0
+    Hateb:   https://b.hatena.ne.jp/kotas
+    Bluesky: https://bsky.app/profile/kotas.jp
+    ```
