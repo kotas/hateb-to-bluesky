@@ -36,12 +36,8 @@ export default {
   },
 
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    try {
-      console.log(getBanner(env));
-      await runHatebToBluesky(env);
-    } catch (e) {
-      console.error(String(e));
-    }
+    console.log(getBanner(env));
+    await runHatebToBluesky(env);
   },
 };
 
