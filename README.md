@@ -2,7 +2,10 @@
 
 [はてなブックマーク](https://b.hatena.ne.jp/) でブックマークした記事を、自動で [Bluesky](https://bsky.app/) に投稿する [Cloudflare Worker](https://www.cloudflare.com/ja-jp/developer-platform/workers/) です。
 
-投稿済みのブックマークについては Cloudflare KV に記録し、次回実行時に新着のブックマークのみを投稿対象とします。
+- すべて無料で利用できます。
+- デフォルトで 15 分ごとにブックマークをチェックし、新着のものを自動投稿します。
+- Bluesky に投稿済みのブックマークかどうか Cloudflare KV に記録します。
+- ページの OGP 情報や画像を取得し、自動的にカードとして添付します。
 
 ![Screenshot](./screenshot.png)
 
