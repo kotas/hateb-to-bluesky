@@ -20,6 +20,9 @@ jobs:
           preCommands: |
             wrangler kv:namespace create KV_HATEB_BSKY || true
             wrangler kv:namespace list
+            wrangler kv:namespace list | jq -r '.[]'
+            wrangler kv:namespace list | jq -r '.[] | .id'
+            wrangler kv:namespace list | jq -r '.[] | select(.title | endswith("KV_HATEB_BSKY")) | .id'
             export KV_HATEB_BSKY_ID=$(npx wrangler kv:namespace list | jq -r '.[] | select(.title | endswith("KV_HATEB_BSKY")) | .id')
             echo "KV Namespace ID: ${KV_HATEB_BSKY_ID}"
             echo "[env.production]" >> wrangler.toml
