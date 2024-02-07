@@ -4,16 +4,15 @@ on:
   push:
     branches:
       - main
-
+  repository_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy
     steps:
       - uses: actions/checkout@v3
-      - name: Create wrangler.toml
-        run: cp .github/workflows/wrangler.deploy.toml wrangler.toml
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}

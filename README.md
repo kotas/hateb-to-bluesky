@@ -1,5 +1,7 @@
 # Hateb to Bluesky
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/kotas/hateb-to-bluesky)
+
 [はてなブックマーク](https://b.hatena.ne.jp/) でブックマークした記事を、自動で [Bluesky](https://bsky.app/) に投稿する [Cloudflare Worker](https://www.cloudflare.com/ja-jp/developer-platform/workers/) です。
 
 ![Screenshot](./screenshot.png)
@@ -8,8 +10,7 @@
 
 [Node.js](https://nodejs.org/) の実行環境が必要です。
 
-1. `wrangler.toml.example` をコピーして `wrangler.toml` を作成します。
-2. Cloudflare の KV で Namespace を作成します。
+1. Cloudflare の KV で Namespace を作成します。
     ```
     $ npx wrangler kv:namespace create HATEB_BSKY
     ```
@@ -19,7 +20,7 @@
         { binding = "KV", id = "<作成された id>" }
     ]
     ```
-3. Cloudflare の Secret に はてな ID, Bluesky の ID, パスワードを設定します。
+2. Cloudflare の Secret に はてな ID, Bluesky の ID, パスワードを設定します。
     ```
     $ npx wrangler secret put HATENA_ID
     $ npx wrangler secret put BLUESKY_IDENTIFIER
@@ -32,11 +33,11 @@
         - Bluesky ID `@ksaito.bsky.social` の場合は `ksaito.bsky.social` を入力
     - `BLUESKY_PASSWORD`
         - Bluesky のパスワードを入力 (暗号化されて Cloudflare に保存されます)
-4. デプロイします。デフォルトでは 15 分ごとに cron 実行されます。
+3. デプロイします。デフォルトでは 15 分ごとに cron 実行されます。
     ```
     $ npx wrangler deploy
     ```
-5. デプロイ後に表示される URL (`https://*.workers.dev`) にアクセスすると、正しくデプロイできていれば下記のような情報が表示されます。
+4. デプロイ後に表示される URL (`https://*.workers.dev`) にアクセスすると、正しくデプロイできていれば下記のような情報が表示されます。
     ```
     hateb-to-bluesky v1.0.0
     Hateb:   https://b.hatena.ne.jp/kotas
