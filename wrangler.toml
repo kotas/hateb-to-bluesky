@@ -2,11 +2,6 @@ name = "hateb-to-bluesky"
 main = "src/index.ts"
 compatibility_date = "2024-01-29"
 
-# Cloudflare KV Namespace
-kv_namespaces = [
-  { binding = "KV", id = "b55c4cc754ee4da4a8de66b2094ab976" }
-]
-
 # 環境変数
 [vars]
 
@@ -35,3 +30,7 @@ TEXT_TEMPLATE = "%title%\n%link%\n\n%description%"
 # Configuration: https://developers.cloudflare.com/workers/wrangler/configuration/#triggers
 [triggers]
 crons = ["*/15 * * * *"] # 15 分間隔で実行
+
+# ↓ は Github Actions でのデプロイ時に自動的に書かれる
+# [env.production]
+# kv_namespaces = [{ binding = "KV", id = "xxx" }]
