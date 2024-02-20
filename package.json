@@ -18,7 +18,6 @@
     "@extractus/feed-extractor": "^7.0.9",
     "html-entities": "^2.4.0",
     "htmlparser2": "^9.1.0",
-    "iconv-lite": "^0.6.3",
-    "wasm-image-optimization": "^1.0.1"
+    "iconv-lite": "^0.6.3"
   }
 }

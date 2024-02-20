@@ -1,5 +1,4 @@
 import { unfurl } from './unfurl';
-import { optimizeImage } from 'wasm-image-optimization';
 
 // Facebook 用のページを出してもらう
 const USER_AGENT = 'facebookexternalhit/1.1';
@@ -44,26 +43,20 @@ export async function extractOgSummaryFromUrl(url: string): Promise<OgSummary | 
 }
 
 async function fetchNormalizedImage(imageUrl: string): Promise<Blob | null> {
-  // 画像をダウンロード
-  const res = await fetchPage(imageUrl);
+  // 画像を Cloudflare の Image Transform 経由でダウンロード
+  const res = await fetch(imageUrl, {
+    cf: {
+      image: {
+        width: MAX_IMAGE_WIDTH,
+        quality: JPEG_QUALITY,
+        format: 'jpeg',
+      },
+    },
+  });
   if (!res.ok) {
     console.warn(`Warning: Failed to fetch image: ${imageUrl} - ${res.status} ${res.statusText}`);
     return null;
   }
 
-  const originalImage = await res.arrayBuffer();
-
-  let image = await optimizeImage({
-    image: originalImage,
-    width: MAX_IMAGE_WIDTH,
-    quality: JPEG_QUALITY,
-    format: 'jpeg',
-  });
-  if (!image) {
-    // 最適化に失敗した場合はオリジナル画像をそのまま使う
-    console.warn(`Warning: Failed to normalize image: ${imageUrl}`);
-    image = new Uint8Array(originalImage);
-  }
-
-  return new Blob([image], { type: 'image/jpeg' });
+  return new Blob([await res.arrayBuffer()], { type: 'image/jpeg' });
 }
