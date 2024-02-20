@@ -1,5 +1,5 @@
 import { unfurl } from './unfurl';
-import { encodeImageToJpeg, decodeImage, resizeImage } from './image';
+import { optimizeImage } from 'wasm-image-optimization';
 
 // Facebook 用のページを出してもらう
 const USER_AGENT = 'facebookexternalhit/1.1';
@@ -7,7 +7,7 @@ const TIMEOUT = 30 * 1000;
 
 const NO_TITLE = '(no title)';
 const MAX_IMAGE_WIDTH = 800;
-const JPEG_QUALITY = 80;
+const JPEG_QUALITY = 90;
 
 export type OgSummary = {
   title: string;
@@ -51,28 +51,19 @@ async function fetchNormalizedImage(imageUrl: string): Promise<Blob | null> {
     return null;
   }
 
-  let image = await decodeImage(await res.arrayBuffer());
-  if (!image) {
-    console.warn(`Warning: Not supported image format: ${imageUrl}`);
-    return null;
-  }
-  if (image.width > MAX_IMAGE_WIDTH) {
-    // アスペクト比を維持したままリサイズ
-    try {
-      image = await resizeImage(image, {
-        width: MAX_IMAGE_WIDTH,
-        height: Math.round((MAX_IMAGE_WIDTH * image.height) / image.width),
-      });
-    } catch (e) {
-      // 画像によってはリサイズに失敗する事がある (RuntimeError: unreachable)
-      // その場合はリサイズせずにそのまま使う
-      console.warn(`Warning: Failed to resize image: ${imageUrl}`);
-    }
-  }
+  const originalImage = await res.arrayBuffer();
 
-  const jpeg = await encodeImageToJpeg(image, {
+  let image = await optimizeImage({
+    image: originalImage,
+    width: MAX_IMAGE_WIDTH,
     quality: JPEG_QUALITY,
+    format: 'jpeg',
   });
+  if (!image) {
+    // 最適化に失敗した場合はオリジナル画像をそのまま使う
+    console.warn(`Warning: Failed to normalize image: ${imageUrl}`);
+    image = new Uint8Array(originalImage);
+  }
 
-  return new Blob([jpeg], { type: 'image/jpeg' });
+  return new Blob([image], { type: 'image/jpeg' });
 }
