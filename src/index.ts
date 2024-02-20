@@ -5,11 +5,11 @@
  * @license MIT
  */
 
-import { extract, FeedEntry } from '@extractus/feed-extractor';
 import { BlueskyCard, BlueskyClient } from './bluesky';
 import { EntryKV } from './kv';
 import { extractOgSummaryFromUrl } from './og';
 import { version } from '../package.json';
+import { HatebEntry, extractEntriesFromHatebFeed } from './hateb';
 
 export interface Env {
   KV: KVNamespace;
@@ -61,23 +61,13 @@ async function runHatebToBluesky(env: Env) {
   const kv = new EntryKV(env.KV);
 
   // はてブのフィード取得
-  const hatebFeedUrl = `https://b.hatena.ne.jp/${env.HATENA_ID}/bookmark.rss`;
-  const hatebFeed = await extract(hatebFeedUrl);
-  if (!hatebFeed || !hatebFeed.entries) {
-    throw new Error(`Failed to fetch Hateb feed: ${hatebFeedUrl}`);
-  }
-  if (hatebFeed.entries.length === 0) {
-    throw new Error(`No bookmark entries in Hateb feed: ${hatebFeedUrl}`);
-  }
-
-  // published 昇順でソート
-  const entries = [...hatebFeed.entries]
-    .sort((a, b) => (a.published?.getTime?.() ?? 0) - (b.published?.getTime?.() ?? 0));
+  const entries = (await extractEntriesFromHatebFeed(env.HATENA_ID))
+    .sort((a, b) => (a.published.getTime?.() ?? 0) - (b.published.getTime?.() ?? 0));
 
   // まだ Bluesky に投稿されていない ID のエントリを抜き出す
   const postingEntries = (await Promise.all(
     entries.map(async (et) => await kv.isPostedEntryId(et.id) ? null : et)
-  )).filter((et: FeedEntry | null): et is FeedEntry => et !== null);
+  )).filter((et: HatebEntry | null): et is HatebEntry => et !== null);
 
   if (postingEntries.length === entries.length) {
     // フィード内の全エントリが投稿対象の場合は初回実行なのでスキップする
@@ -139,11 +129,11 @@ async function runHatebToBluesky(env: Env) {
   await kv.flushOldEntryIds(currentEntryIds);
 }
 
-function renderText(template: string, entry: FeedEntry): string {
+function renderText(template: string, entry: HatebEntry): string {
   const dict: Record<string, string> = {
     title: entry.title ?? '',
     link: entry.link ?? '',
-    description: entry.description ?? '',
+    description: entry.comment ?? '',
   };
 
   return template
