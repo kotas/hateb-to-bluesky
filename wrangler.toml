@@ -21,6 +21,10 @@ ENABLE_OG = "true"
 [triggers]
 crons = ["*/15 * * * *"] # 15 分間隔で実行
 
+# ↓ は開発用
+[env.development]
+kv_namespaces = [{ binding = "KV", id = "f570cba7b4414c72bd86ccecb0c02d70" }]
+
 # ↓ は Github Actions でのデプロイ時に自動的に書かれる
 # [env.production]
 # kv_namespaces = [{ binding = "KV", id = "xxx" }]
