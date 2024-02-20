@@ -66,10 +66,16 @@ async function fetchNormalizedImage(imageUrl: string): Promise<Blob | null> {
   }
   if (image.width > MAX_IMAGE_WIDTH) {
     // アスペクト比を維持したままリサイズ
-    image = await resizeImage(image, {
-      width: MAX_IMAGE_WIDTH,
-      height: Math.round(MAX_IMAGE_WIDTH * image.height / image.width),
-    });
+    try {
+      image = await resizeImage(image, {
+        width: MAX_IMAGE_WIDTH,
+        height: Math.round(MAX_IMAGE_WIDTH * image.height / image.width),
+      });
+    } catch (e) {
+      // 画像によってはリサイズに失敗する事がある (RuntimeError: unreachable)
+      // その場合はリサイズせずにそのまま使う
+      console.warn(`Warning: Failed to resize image: ${imageUrl}`);
+    }
   }
 
   const jpeg = await encodeImageToJpeg(image, {
