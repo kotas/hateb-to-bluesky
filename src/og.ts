@@ -15,12 +15,13 @@ export type OgSummary = {
   image: Blob | null;
 };
 
-const fetchPage = (url: string) => fetch(url, {
-  signal: AbortSignal.timeout(TIMEOUT),
-  headers: {
-    'User-Agent': USER_AGENT,
-  },
-});
+const fetchPage = (url: string) =>
+  fetch(url, {
+    signal: AbortSignal.timeout(TIMEOUT),
+    headers: {
+      'User-Agent': USER_AGENT,
+    },
+  });
 
 export async function extractOgSummaryFromUrl(url: string): Promise<OgSummary | null> {
   const metadata = await unfurl(url, {
@@ -28,21 +29,12 @@ export async function extractOgSummaryFromUrl(url: string): Promise<OgSummary | 
     oembed: true,
   });
 
-  const title =
-    metadata.open_graph?.title ??
-    metadata.twitter_card?.title ??
-    metadata.oEmbed?.title ??
-    metadata.title;
+  const title = metadata.open_graph?.title ?? metadata.twitter_card?.title ?? metadata.oEmbed?.title ?? metadata.title;
 
-  const description =
-    metadata.open_graph?.description ??
-    metadata.twitter_card?.description ??
-    metadata.description;
+  const description = metadata.open_graph?.description ?? metadata.twitter_card?.description ?? metadata.description;
 
   const imageUrl =
-    metadata.open_graph?.images?.[0]?.url ??
-    metadata.twitter_card?.images?.[0]?.url ??
-    metadata.oEmbed?.thumbnails?.[0]?.url;
+    metadata.open_graph?.images?.[0]?.url ?? metadata.twitter_card?.images?.[0]?.url ?? metadata.oEmbed?.thumbnails?.[0]?.url;
 
   return {
     title: title || NO_TITLE,
@@ -69,7 +61,7 @@ async function fetchNormalizedImage(imageUrl: string): Promise<Blob | null> {
     try {
       image = await resizeImage(image, {
         width: MAX_IMAGE_WIDTH,
-        height: Math.round(MAX_IMAGE_WIDTH * image.height / image.width),
+        height: Math.round((MAX_IMAGE_WIDTH * image.height) / image.width),
       });
     } catch (e) {
       // 画像によってはリサイズに失敗する事がある (RuntimeError: unreachable)

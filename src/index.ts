@@ -61,13 +61,14 @@ async function runHatebToBluesky(env: Env) {
   const kv = new EntryKV(env.KV);
 
   // はてブのフィード取得
-  const entries = (await extractEntriesFromHatebFeed(env.HATENA_ID))
-    .sort((a, b) => (a.published.getTime?.() ?? 0) - (b.published.getTime?.() ?? 0));
+  const entries = (await extractEntriesFromHatebFeed(env.HATENA_ID)).sort(
+    (a, b) => (a.published.getTime?.() ?? 0) - (b.published.getTime?.() ?? 0),
+  );
 
   // まだ Bluesky に投稿されていない ID のエントリを抜き出す
-  const postingEntries = (await Promise.all(
-    entries.map(async (et) => await kv.isPostedEntryId(et.id) ? null : et)
-  )).filter((et: HatebEntry | null): et is HatebEntry => et !== null);
+  const postingEntries = (await Promise.all(entries.map(async (et) => ((await kv.isPostedEntryId(et.id)) ? null : et)))).filter(
+    (et: HatebEntry | null): et is HatebEntry => et !== null,
+  );
 
   if (postingEntries.length === entries.length) {
     // フィード内の全エントリが投稿対象の場合は初回実行なのでスキップする
@@ -125,7 +126,7 @@ async function runHatebToBluesky(env: Env) {
 
   // 古いキーを KV から削除する
   console.info(`Flushing old entry IDs from KV...`);
-  const currentEntryIds = entries.map(e => e.id);
+  const currentEntryIds = entries.map((e) => e.id);
   await kv.flushOldEntryIds(currentEntryIds);
 }
 
@@ -136,7 +137,5 @@ function renderText(template: string, entry: HatebEntry): string {
     description: entry.comment ?? '',
   };
 
-  return template
-    .replaceAll(/(%%)|%(\w+)%/g, (_, escaped, varName) => escaped ? '%' : dict[varName] ?? '')
-    .trim();
+  return template.replaceAll(/(%%)|%(\w+)%/g, (_, escaped, varName) => (escaped ? '%' : dict[varName] ?? '')).trim();
 }

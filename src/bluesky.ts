@@ -50,22 +50,26 @@ export class BlueskyClient {
       facets: richText.facets,
       createdAt: new Date().toISOString(),
 
-      embed: post.card ? {
-        $type: 'app.bsky.embed.external',
-        external: {
-          uri: post.card.link,
-          title: post.card.title,
-          description: post.card.description,
-          thumb: post.card.image ? {
-            $type: 'blob',
-            ref: {
-              $link: post.card.image.ref,
+      embed: post.card
+        ? {
+            $type: 'app.bsky.embed.external',
+            external: {
+              uri: post.card.link,
+              title: post.card.title,
+              description: post.card.description,
+              thumb: post.card.image
+                ? {
+                    $type: 'blob',
+                    ref: {
+                      $link: post.card.image.ref,
+                    },
+                    mimeType: post.card.image.mimeType,
+                    size: post.card.image.size,
+                  }
+                : undefined,
             },
-            mimeType: post.card.image.mimeType,
-            size: post.card.image.size,
-          } : undefined,
-        },
-      } : undefined,
+          }
+        : undefined,
     });
   }
 
