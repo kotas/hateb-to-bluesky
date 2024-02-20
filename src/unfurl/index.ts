@@ -4,13 +4,14 @@
 // Changed:
 // - Remove `node-fetch` dependency, instead use native fetch API.
 // - Remove `url` dependency, instead use native URL.
+// - Use `html-entities` instead of `he` for size reduction.
 // - Fix TypeScript errors.
 
 import { Parser } from 'htmlparser2';
-import UnexpectedError from 'unfurl.js/src/unexpectedError';
-import { schema, keys } from 'unfurl.js/src/schema';
-import { Metadata, Opts } from 'unfurl.js/src/types';
-import { decode as he_decode } from 'he';
+import UnexpectedError from './unexpectedError';
+import { schema, keys } from './schema';
+import { Metadata, Opts } from './types';
+import { decode as he_decode } from 'html-entities';
 import { decode as iconv_decode } from 'iconv-lite';
 
 type ParserContext = {
