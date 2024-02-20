@@ -6,12 +6,12 @@
 // - Remove `url` dependency, instead use native URL.
 // - Fix TypeScript errors.
 
-import { Parser } from "htmlparser2";
-import UnexpectedError from "unfurl.js/src/unexpectedError";
-import { schema, keys } from "unfurl.js/src/schema";
-import { Metadata, Opts } from "unfurl.js/src/types";
-import { decode as he_decode } from "he";
-import { decode as iconv_decode } from "iconv-lite";
+import { Parser } from 'htmlparser2';
+import UnexpectedError from 'unfurl.js/src/unexpectedError';
+import { schema, keys } from 'unfurl.js/src/schema';
+import { Metadata, Opts } from 'unfurl.js/src/types';
+import { decode as he_decode } from 'he';
+import { decode as iconv_decode } from 'iconv-lite';
 
 type ParserContext = {
   isHtml?: boolean;
@@ -24,8 +24,8 @@ type ParserContext = {
 };
 
 const defaultHeaders = {
-  Accept: "text/html, application/xhtml+xml",
-  "User-Agent": "facebookexternalhit",
+  Accept: 'text/html, application/xhtml+xml',
+  'User-Agent': 'facebookexternalhit',
 };
 
 function unfurl(url: string, opts?: Opts): Promise<Metadata> {
@@ -33,22 +33,19 @@ function unfurl(url: string, opts?: Opts): Promise<Metadata> {
     opts = {};
   }
 
-  if (opts.constructor.name !== "Object") {
+  if (opts.constructor.name !== 'Object') {
     throw new UnexpectedError(UnexpectedError.BAD_OPTIONS);
   }
 
-  typeof opts.oembed === "boolean" || (opts.oembed = true);
-  typeof opts.compress === "boolean" || (opts.compress = true);
-  typeof opts.headers === "object" || (opts.headers = defaultHeaders);
+  typeof opts.oembed === 'boolean' || (opts.oembed = true);
+  typeof opts.compress === 'boolean' || (opts.compress = true);
+  typeof opts.headers === 'object' || (opts.headers = defaultHeaders);
 
   Number.isInteger(opts.follow) || (opts.follow = 50);
   Number.isInteger(opts.timeout) || (opts.timeout = 0);
   Number.isInteger(opts.size) || (opts.size = 0);
 
-  return getPage(url, opts)
-    .then(getMetadata(url, opts))
-    .then(getRemoteMetadata(url, opts))
-    .then(parse(url));
+  return getPage(url, opts).then(getMetadata(url, opts)).then(getRemoteMetadata(url, opts)).then(parse(url));
 }
 
 async function getPage(url: string, opts: Opts) {
@@ -62,8 +59,8 @@ async function getPage(url: string, opts: Opts) {
       }));
 
   const buf = Buffer.from(await res.arrayBuffer());
-  const contentType = res.headers.get("Content-Type");
-  const contentLength = res.headers.get("Content-Length");
+  const contentType = res.headers.get('Content-Type');
+  const contentLength = res.headers.get('Content-Length');
 
   if (res.status !== 200) {
     throw new UnexpectedError({
@@ -106,18 +103,7 @@ async function getPage(url: string, opts: Opts) {
 
   // found charset
   if (rg) {
-    const supported = [
-      "CP932",
-      "CP936",
-      "CP949",
-      "CP950",
-      "GB2312",
-      "GBK",
-      "GB18030",
-      "BIG5",
-      "SHIFT_JIS",
-      "EUC-JP",
-    ];
+    const supported = ['CP932', 'CP936', 'CP949', 'CP950', 'GB2312', 'GBK', 'GB18030', 'BIG5', 'SHIFT_JIS', 'EUC-JP'];
     const charset = rg.pop()?.toUpperCase();
 
     if (charset && supported.includes(charset)) {
@@ -137,45 +123,33 @@ function getRemoteMetadata(url: string, opts: Opts) {
     const target = new URL(he_decode(oembed.href), url);
 
     let res = await fetch(target.href);
-    let contentType = res.headers.get("Content-Type") || '';
+    let contentType = res.headers.get('Content-Type') || '';
     const status = res.status;
 
-    if (status === 403 && target.protocol === "http:") {
+    if (status === 403 && target.protocol === 'http:') {
       // try again using HTTPS
-      target.protocol = "https:";
+      target.protocol = 'https:';
 
       res = await fetch(target.href);
-      contentType = res.headers.get("Content-Type") || '';
+      contentType = res.headers.get('Content-Type') || '';
     }
 
     let ret: any;
 
-    if (
-      oembed.type === "application/json+oembed" &&
-      /application\/json/.test(contentType)
-    ) {
+    if (oembed.type === 'application/json+oembed' && /application\/json/.test(contentType)) {
       ret = await res.json();
-    } else if (
-      oembed.type === "text/xml+oembed" &&
-      /(text|application)\/xml/.test(contentType)
-    ) {
-      const data = (await res.text())
-        .replace(/&gt;/g, ">")
-        .replace(/&lt;/g, "<");
+    } else if (oembed.type === 'text/xml+oembed' && /(text|application)\/xml/.test(contentType)) {
+      const data = (await res.text()).replace(/&gt;/g, '>').replace(/&lt;/g, '<');
 
       const content: { [key: string]: string } = {};
 
-      const parserContext: ParserContext = { text: "" };
+      const parserContext: ParserContext = { text: '' };
 
       ret = await new Promise((resolve) => {
         const parser = new Parser(
           {
             oncdataend: () => {
-              if (
-                !content.html &&
-                parserContext.text.trim().startsWith("<") &&
-                parserContext.text.trim().endsWith(">")
-              ) {
+              if (!content.html && parserContext.text.trim().startsWith('<') && parserContext.text.trim().endsWith('>')) {
                 content.html = parserContext.text.trim();
               }
             },
@@ -183,23 +157,17 @@ function getRemoteMetadata(url: string, opts: Opts) {
             onopentag: function (name: string, attribs: any) {
               if (parserContext.isHtml) {
                 if (!content.html) {
-                  content.html = "";
+                  content.html = '';
                 }
 
                 content.html += `<${name} `;
                 content.html += Object.keys(attribs)
-                  .reduce(
-                    (str, k) =>
-                      str +
-                      (attribs[k] ? `${k}="${attribs[k]}"` : `${k}`) +
-                      " ",
-                    ""
-                  )
+                  .reduce((str, k) => str + (attribs[k] ? `${k}="${attribs[k]}"` : `${k}`) + ' ', '')
                   .trim();
-                content.html += ">";
+                content.html += '>';
               }
 
-              if (name === "html") {
+              if (name === 'html') {
                 parserContext.isHtml = true;
               }
 
@@ -209,11 +177,11 @@ function getRemoteMetadata(url: string, opts: Opts) {
               parserContext.text += text;
             },
             onclosetag: function (tagname: string) {
-              if (tagname === "oembed") {
+              if (tagname === 'oembed') {
                 return;
               }
 
-              if (tagname === "html") {
+              if (tagname === 'html') {
                 parserContext.isHtml = false;
                 return;
               }
@@ -225,8 +193,8 @@ function getRemoteMetadata(url: string, opts: Opts) {
 
               content[tagname] = parserContext.text.trim();
 
-              parserContext.tagName = "";
-              parserContext.text = "";
+              parserContext.tagName = '';
+              parserContext.text = '';
             },
             onend: function () {
               resolve(content);
@@ -234,7 +202,7 @@ function getRemoteMetadata(url: string, opts: Opts) {
           },
           {
             recognizeCDATA: true,
-          }
+          },
         );
 
         parser.write(data);
@@ -247,7 +215,7 @@ function getRemoteMetadata(url: string, opts: Opts) {
     }
 
     const oEmbedMetadata = Object.keys(ret)
-      .map((k) => ["oEmbed:" + k, ret[k]])
+      .map((k) => ['oEmbed:' + k, ret[k]])
       .filter(([k]) => keys.includes(String(k)));
 
     metadata.push(...oEmbedMetadata);
@@ -258,7 +226,7 @@ function getRemoteMetadata(url: string, opts: Opts) {
 function getMetadata(url: string, opts: Opts) {
   return function (text: string) {
     const metadata: [string, string | string[]][] = [];
-    const parserContext: ParserContext = { text: "" };
+    const parserContext: ParserContext = { text: '' };
 
     let oembed: { type?: string; href?: string };
     let distanceFromRoot = 0;
@@ -267,19 +235,13 @@ function getMetadata(url: string, opts: Opts) {
       const parser = new Parser({
         onend: function () {
           if (parserContext.favicon === undefined) {
-            metadata.push(["favicon", new URL("/favicon.ico", url).href]);
+            metadata.push(['favicon', new URL('/favicon.ico', url).href]);
           } else {
-            metadata.push([
-              "favicon",
-              new URL(parserContext.favicon, url).href,
-            ]);
+            metadata.push(['favicon', new URL(parserContext.favicon, url).href]);
           }
 
           if (parserContext.canonical_url) {
-            metadata.push([
-              "canonical_url",
-              new URL(parserContext.canonical_url, url).href,
-            ]);
+            metadata.push(['canonical_url', new URL(parserContext.canonical_url, url).href]);
           }
 
           resolve({ oembed, metadata });
@@ -290,11 +252,11 @@ function getMetadata(url: string, opts: Opts) {
         },
 
         ontext: function (text: string) {
-          if (parserContext.tagName === "title") {
+          if (parserContext.tagName === 'title') {
             // makes sure we haven't already seen the title
             if (parserContext.title !== null) {
               if (parserContext.title === undefined) {
-                parserContext.title = "";
+                parserContext.title = '';
               }
 
               parserContext.title += text;
@@ -302,56 +264,41 @@ function getMetadata(url: string, opts: Opts) {
           }
         },
 
-        onopentag: function (
-          tagname: string,
-          attribs: { [key: string]: string }
-        ) {
+        onopentag: function (tagname: string, attribs: { [key: string]: string }) {
           distanceFromRoot++;
 
           if (opts.oembed && attribs.href) {
             // handle XML and JSON with a preference towards JSON since its more efficient for us
-            if (
-              tagname === "link" &&
-              (attribs.type === "text/xml+oembed" ||
-                attribs.type === "application/json+oembed")
-            ) {
-              if (!oembed || oembed.type === "text/xml+oembed") {
+            if (tagname === 'link' && (attribs.type === 'text/xml+oembed' || attribs.type === 'application/json+oembed')) {
+              if (!oembed || oembed.type === 'text/xml+oembed') {
                 // prefer json
                 oembed = attribs;
               }
             }
           }
-          if (
-            tagname === "link" &&
-            attribs.href &&
-            (attribs.rel === "icon" || attribs.rel === "shortcut icon")
-          ) {
+          if (tagname === 'link' && attribs.href && (attribs.rel === 'icon' || attribs.rel === 'shortcut icon')) {
             parserContext.favicon = attribs.href;
           }
 
-          if (
-            tagname === "link" &&
-            attribs.href &&
-            attribs.rel === "canonical"
-          ) {
+          if (tagname === 'link' && attribs.href && attribs.rel === 'canonical') {
             parserContext.canonical_url = attribs.href;
           }
 
           let pair: [string, string | string[]] | undefined;
 
-          if (tagname === "meta") {
-            if (attribs.name === "description" && attribs.content) {
-              pair = ["description", attribs.content];
-            } else if (attribs.name === "author" && attribs.content) {
-              pair = ["author", attribs.content];
-            } else if (attribs.name === "theme-color" && attribs.content) {
-              pair = ["theme_color", attribs.content];
-            } else if (attribs.name === "keywords" && attribs.content) {
+          if (tagname === 'meta') {
+            if (attribs.name === 'description' && attribs.content) {
+              pair = ['description', attribs.content];
+            } else if (attribs.name === 'author' && attribs.content) {
+              pair = ['author', attribs.content];
+            } else if (attribs.name === 'theme-color' && attribs.content) {
+              pair = ['theme_color', attribs.content];
+            } else if (attribs.name === 'keywords' && attribs.content) {
               const keywords = attribs.content
-                .replace(/^[,\s]{1,}|[,\s]{1,}$/g, "") // gets rid of trailing space or sommas
+                .replace(/^[,\s]{1,}|[,\s]{1,}$/g, '') // gets rid of trailing space or sommas
                 .split(/,{1,}\s{0,}/); // splits on 1+ commas followed by 0+ spaces
 
-              pair = ["keywords", keywords];
+              pair = ['keywords', keywords];
             } else if (attribs.property && keys.includes(attribs.property)) {
               const content = attribs.content || attribs.value;
               pair = [attribs.property, content];
@@ -368,17 +315,17 @@ function getMetadata(url: string, opts: Opts) {
 
         onclosetag: function (tag: string) {
           distanceFromRoot--;
-          parserContext.tagName = "";
+          parserContext.tagName = '';
 
-          if (distanceFromRoot <= 2 && tag === "title") {
-            metadata.push(["title", parserContext.title!]);
-            parserContext.title = "";
+          if (distanceFromRoot <= 2 && tag === 'title') {
+            metadata.push(['title', parserContext.title!]);
+            parserContext.title = '';
           }
 
           // We want to parse as little as possible so finish once we see </head>
           // if we have not seen a title tag within the head, we scan the entire
           // document instead
-          if (tag === "head" && parserContext.title) {
+          if (tag === 'head' && parserContext.title) {
             parser.reset();
           }
         },
@@ -406,7 +353,7 @@ function parse(url: string) {
       const item = schema.get(metaKey);
 
       // decoding html entities
-      if (typeof metaValue === "string") {
+      if (typeof metaValue === 'string') {
         metaValue = he_decode(he_decode(metaValue.toString()));
       } else if (Array.isArray(metaValue)) {
         metaValue = metaValue.map((val) => he_decode(he_decode(val)));
@@ -418,18 +365,18 @@ function parse(url: string) {
       }
 
       // special case for video tags which we want to map to each video object
-      if (metaKey === "og:video:tag") {
+      if (metaKey === 'og:video:tag') {
         ogVideoTags.push(metaValue);
         continue;
       }
-      if (metaKey === "article:tag") {
+      if (metaKey === 'article:tag') {
         articleTags.push(metaValue);
         continue;
       }
 
-      if (item.type === "number" && typeof metaValue === 'string') {
+      if (item.type === 'number' && typeof metaValue === 'string') {
         metaValue = String(parseInt(metaValue, 10));
-      } else if (item.type === "url" && typeof metaValue === 'string') {
+      } else if (item.type === 'url' && typeof metaValue === 'string') {
         metaValue = new URL(metaValue, url).href;
       }
 
